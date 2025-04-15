@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>🛠️ 관리자 대시보드</h2>
+
+  <!-- 플랫폼 통계 -->
+  <h3>📊 플랫폼 통계</h3>
+  <ul>
+    <li>총 사용자 수: {{ stats.total_users }}</li>
+    <li>차단된 사용자 수: {{ stats.blocked_users }}</li>
+    <li>총 상품 수: {{ stats.total_products }}</li>
+    <li>판매 완료 상품 수: {{ stats.sold_products }}</li>
+    <li>총 메시지 수: {{ stats.total_messages }}</li>
+  </ul>
+  <hr />
+
+  <!-- 사용자 목록 -->
+  <h3>👥 사용자 목록</h3>
+  <table class="product-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>이름</th>
+        <th>이메일</th>
+        <th>차단 여부</th>
+        <th>관리</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u[0] }}</td>
+        <td>{{ u[1] }}</td>
+        <td>{{ u[2] }}</td>
+        <td>{% if u[3] == 1 %}❌{% else %}✅{% endif %}</td>
+        <td><a href="{{ url_for('block_user', user_id=u[0]) }}">[차단/해제]</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- 상품 목록 -->
+  <h3>📦 상품 목록</h3>
+  <table class="product-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>상품명</th>
+        <th>차단 여부</th>
+        <th>관리</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td>{{ p[0] }}</td>
+        <td>{{ p[1] }}</td>
+        <td>{% if p[2] == 1 %}❌{% else %}✅{% endif %}</td>
+        <td><a href="{{ url_for('block_product', product_id=p[0]) }}">[차단/해제]</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- 메시지 로그 -->
+  <h3>💬 최근 메시지 로그</h3>
+  <table class="product-table">
+    <thead>
+      <tr>
+        <th>보낸 사람</th>
+        <th>받는 사람</th>
+        <th>내용</th>
+        <th>시간</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in messages %}
+      <tr>
+        <td>{{ m[1] }}</td>
+        <td>{{ m[2] }}</td>
+        <td>{{ m[3] }}</td>
+        <td>{{ m[4] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- 거래 내역 -->
+  <h3>💰 거래 내역</h3>
+  <table class="trade-table">
+    <thead>
+      <tr>
+        <th>상품명</th>
+        <th>판매자 ID</th>
+        <th>구매자 ID</th>
+        <th>가격</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transfers %}
+      <tr>
+        <td>{{ t[0] }}</td>
+        <td>{{ t[1] }}</td>
+        <td>{{ t[2] }}</td>
+        <td>{{ t[3] }} 원</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- 관리자 도구 -->
+  <h3>🛠️ 플랫폼 관리 도구</h3>
+  <ul>
+    <li>📨 <a href="{{ url_for('delete_messages') }}">모든 메시지 삭제</a></li>
+    <li>👤 <a href="{{ url_for('reset_users') }}">일반 사용자 초기화</a></li>
+    <li>📦 <a href="{{ url_for('reset_products') }}">상품 초기화</a></li>
+  </ul>
+</div>
+{% endblock %}
