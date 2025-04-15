@@ -470,16 +470,14 @@ def view_user(user_id):
 @app.route("/group_chat")
 def group_chat():
     if "user_id" not in session:
+        flash("로그인이 필요합니다.", "danger")
         return redirect(url_for("login"))
     return render_template("group_chat.html")
 
 @socketio.on("send_message")
-def handle_message(data):
+def handle_group_message(message):
     username = session.get("username", "익명")
-    emit("receive_message", {
-        "user": username,
-        "message": data["message"]
-    }, broadcast=True)
+    emit("receive_message", {"username": username, "message": message}, broadcast=True)
 
 # ✅ 앱 실행
 if __name__ == "__main__":
