@@ -17,6 +17,16 @@ body {
   color: white;
 }
 
+.logo a {
+  color: inherit;         /* 상위 색상 그대로 상속 */
+  text-decoration: none;  /* 밑줄 제거 */
+}
+
+.logo a:hover {
+  color: inherit;         /* 마우스 올려도 색상 유지 */
+  text-decoration: none;  /* 마우스 올려도 밑줄 없음 */
+}
+
 .navbar .logo {
   font-size: 24px;
   font-weight: bold;
