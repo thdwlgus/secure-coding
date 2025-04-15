@@ -62,9 +62,8 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
-        # 신고 테이블
-        cursor.execute("""
+        # ✅ 신고 테이블 (오류 수정됨)
+        c.execute('''
             CREATE TABLE IF NOT EXISTS reports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 type TEXT NOT NULL CHECK (type IN ('user', 'product')),
@@ -73,7 +72,7 @@ def init_db():
                 reporter_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        ''')
         conn.commit()
 
 @app.route("/", methods=["GET", "POST"])

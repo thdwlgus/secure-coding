@@ -7,4 +7,13 @@
 {% else %}
   <p style="color: gray">소개글이 없습니다.</p>
 {% endif %}
+
+<!-- ✅ 로그인 사용자이고, 자기 자신이 아닐 때만 신고 가능 -->
+{% if session.get("user_id") and session.get("user_id") != user_id %}
+  <p>
+    <a href="{{ url_for('report', type='user', target_id=user_id) }}" style="color: red; font-weight: bold;">
+      🚨 사용자 신고하기
+    </a>
+  </p>
+{% endif %}
 {% endblock %}
