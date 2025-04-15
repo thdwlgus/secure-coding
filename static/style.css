@@ -253,3 +253,31 @@ button:hover {
 .back-link:hover {
   text-decoration: underline;
 }
+
+/* 대시보드 링크 꾸미기 */
+.dashboard-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.dashboard-link {
+  display: inline-block;
+  background-color: #f5f8ff;
+  color: #333;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+  border: 1px solid #d0d0d0;
+}
+
+.dashboard-link:hover {
+  background-color: #e8f0ff;
+  color: #007bff;
+  border-color: #007bff;
+}
