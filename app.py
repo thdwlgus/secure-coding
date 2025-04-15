@@ -126,7 +126,13 @@ def logout():
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    return render_template("dashboard.html")
+
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM products WHERE seller_id = ?", (session["user_id"],))
+        products = cursor.fetchall()
+
+    return render_template("dashboard.html", products=products)
 
 @app.route("/product/new", methods=["GET", "POST"])
 def new_product():
@@ -149,6 +155,52 @@ def view_product(product_id):
     with sqlite3.connect(DB_NAME) as conn:
         product = conn.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
     return render_template("view_product.html", product=product)
+
+@app.route("/product/edit/<int:product_id>", methods=["GET", "POST"])
+def edit_product(product_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        product = cursor.execute("SELECT * FROM products WHERE id = ? AND seller_id = ?", (product_id, session["user_id"])).fetchone()
+
+        if not product:
+            flash("수정할 권한이 없습니다.", "danger")
+            return redirect(url_for("dashboard"))
+
+        if request.method == "POST":
+            name = request.form["name"]
+            description = request.form["description"]
+            price = int(request.form["price"])
+            cursor.execute("""
+                UPDATE products SET name = ?, description = ?, price = ?
+                WHERE id = ? AND seller_id = ?
+            """, (name, description, price, product_id, session["user_id"]))
+            conn.commit()
+            flash("상품이 수정되었습니다.", "success")
+            return redirect(url_for("dashboard"))
+
+    return render_template("edit_product.html", product=product)
+
+@app.route("/product/delete/<int:product_id>")
+def delete_product(product_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        # 본인 상품인지 확인
+        product = cursor.execute("SELECT * FROM products WHERE id = ? AND seller_id = ?", (product_id, session["user_id"])).fetchone()
+
+        if not product:
+            flash("삭제할 권한이 없습니다.", "danger")
+        else:
+            cursor.execute("DELETE FROM products WHERE id = ?", (product_id,))
+            conn.commit()
+            flash("상품이 삭제되었습니다.", "info")
+
+    return redirect(url_for("dashboard"))
 
 @app.route("/chat/<int:user_id>", methods=["GET", "POST"])
 def chat(user_id):

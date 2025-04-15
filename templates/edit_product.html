@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <h2>✏️ 상품 수정</h2>
+  <form method="POST">
+    <label>상품명</label>
+    <input type="text" name="name" value="{{ product[1] }}" required>
+    <label>설명</label>
+    <textarea name="description" rows="4">{{ product[2] }}</textarea>
+    <label>가격</label>
+    <input type="number" name="price" value="{{ product[3] }}" required>
+    <button type="submit">수정 완료</button>
+  </form>
+</div>
+{% endblock %}
