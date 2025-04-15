@@ -238,6 +238,18 @@ def admin():
         }
     return render_template("admin.html", users=users, products=products, stats=stats)
 
+@app.route("/admin/delete_messages")
+def delete_messages():
+    if not session.get("is_admin"):
+        return redirect(url_for("index"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        conn.execute("DELETE FROM messages")
+        conn.commit()
+
+    flash("모든 메시지가 삭제되었습니다.", "info")
+    return redirect(url_for("admin"))
+
 @app.route("/admin/block_user/<int:user_id>")
 def block_user(user_id):
     if not session.get("is_admin"):
