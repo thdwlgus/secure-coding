@@ -12,13 +12,11 @@
 
   <h2>👋 내 프로필</h2>
 
-  <!-- 소개글 미리보기 -->
   {% if user[2] %}
     <div class="section-title">📌 소개글</div>
     <div class="bio-box">{{ user[2] }}</div>
   {% endif %}
 
-  <!-- 소개글 수정 폼 -->
   <form method="POST">
     <label for="bio">소개글 수정</label>
     <textarea name="bio" rows="4" placeholder="자기소개를 입력하세요">{{ user[2] or '' }}</textarea>
