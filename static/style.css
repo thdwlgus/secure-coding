@@ -281,3 +281,17 @@ button:hover {
   color: #007bff;
   border-color: #007bff;
 }
+
+.bio-box {
+  background-color: #f9f9f9;
+  border-left: 5px solid #007bff;
+  padding: 15px 20px;
+  margin-bottom: 25px;
+  border-radius: 6px;
+}
+
+.bio-box p {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  color: #444;
+}
