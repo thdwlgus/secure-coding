@@ -1,0 +1,39 @@
+{% extends "base.html" %} 
+{% block content %}
+<h2>중고 상품 목록</h2>
+
+<form method="POST">
+  <input
+    type="text"
+    name="keyword"
+    placeholder="상품명을 검색하세요"
+    value="{{ keyword }}"
+  />
+  <button type="submit">🔍 검색</button>
+</form>
+
+{% if products %}
+<ul class="product-list">
+  {% for p in products %}
+  <li>
+    <a href="{{ url_for('view_product', product_id=p[0]) }}">
+      {{ p[1] }} - {{ p[3] }}원
+    </a>
+
+    {% if session.get("user_id") and p[4] != session["user_id"] and not p[7] %}
+    <a class="chat-icon" href="{{ url_for('chat', user_id=p[4]) }}">💬</a>
+    <a style="font-size: 0.85em; margin-left: 10px;" href="{{ url_for('view_user', user_id=p[4]) }}">
+      🔎 {{ p[4] }}번 판매자 프로필
+    </a>
+    {% endif %}
+
+    {% if p[7] %}
+    <span class="status-sold">[판매완료]</span>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>등록된 상품이 없습니다.</p>
+{% endif %} 
+{% endblock %}
