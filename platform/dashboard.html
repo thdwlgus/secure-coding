@@ -1,0 +1,8 @@
+{% extends "base.html" %} {% block content %}
+<h2>👤 대시보드</h2>
+<ul>
+  <li><a href="{{ url_for('new_product') }}">📦 상품 등록</a></li>
+  <li><a href="{{ url_for('profile') }}">📝 내 프로필 보기</a></li>
+  <li><a href="{{ url_for('change_password') }}">🔐 비밀번호 변경</a></li>
+</ul>
+{% endblock %}
