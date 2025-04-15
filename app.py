@@ -334,11 +334,14 @@ def admin():
 @app.route("/report", methods=["GET", "POST"])
 def report():
     if "user_id" not in session:
-        flash("로그인이 필요합니다.", "danger")
+        flash("로그인이 필요합니다.", "warning")
         return redirect(url_for("login"))
-    
+
+    report_type = request.args.get("type")
+    target_id = request.args.get("target_id")
+
     if request.method == "POST":
-        report_type = request.form["type"]
+        type_ = request.form["type"]
         target_id = int(request.form["target_id"])
         reason = request.form["reason"]
         reporter_id = session["user_id"]
@@ -347,12 +350,12 @@ def report():
             conn.execute("""
                 INSERT INTO reports (type, target_id, reason, reporter_id)
                 VALUES (?, ?, ?, ?)
-            """, (report_type, target_id, reason, reporter_id))
+            """, (type_, target_id, reason, reporter_id))
             conn.commit()
             flash("신고가 접수되었습니다.", "success")
-            return redirect(url_for("index"))
+        return redirect(url_for("index"))
 
-    return render_template("report.html")
+    return render_template("report.html", report_type=report_type, target_id=target_id)
 
 @app.route("/admin/reports")
 def admin_reports():
@@ -378,8 +381,38 @@ def delete_report(report_id):
     with sqlite3.connect(DB_NAME) as conn:
         conn.execute("DELETE FROM reports WHERE id = ?", (report_id,))
         conn.commit()
+
     flash("신고가 삭제되었습니다.", "info")
     return redirect(url_for("admin_reports"))
+
+@app.route("/admin/delete_user/<int:user_id>")
+def delete_user(user_id):
+    if not session.get("is_admin"):
+        flash("접근 권한이 없습니다.", "danger")
+        return redirect(url_for("index"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        conn.execute("DELETE FROM users WHERE id = ? AND is_admin = 0", (user_id,))
+        conn.execute("DELETE FROM reports WHERE type = 'user' AND target_id = ?", (user_id,))
+        conn.commit()
+
+    flash(f"사용자 ID {user_id}가 삭제되었습니다.", "info")
+    return redirect(url_for("admin_reports"))
+
+@app.route("/admin/delete_reported_product/<int:product_id>")
+def delete_reported_product(product_id):
+    if not session.get("is_admin"):
+        flash("접근 권한이 없습니다.", "danger")
+        return redirect(url_for("index"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
+        conn.execute("DELETE FROM reports WHERE type = 'product' AND target_id = ?", (product_id,))
+        conn.commit()
+
+    flash(f"신고된 상품 ID {product_id}가 삭제되었습니다.", "info")
+    return redirect(url_for("admin_reports"))
+
 
 @app.route("/admin/reset_products")
 def reset_products():
@@ -422,6 +455,7 @@ def delete_messages():
 def block_user(user_id):
     if not session.get("is_admin"):
         return redirect(url_for("index"))
+
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         status = cursor.execute("SELECT is_blocked FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -429,12 +463,14 @@ def block_user(user_id):
             new_status = 0 if status[0] == 1 else 1
             cursor.execute("UPDATE users SET is_blocked = ? WHERE id = ?", (new_status, user_id))
             conn.commit()
+
     return redirect(url_for("admin"))
 
 @app.route("/admin/block_product/<int:product_id>")
 def block_product(product_id):
     if not session.get("is_admin"):
         return redirect(url_for("index"))
+
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         status = cursor.execute("SELECT is_blocked FROM products WHERE id = ?", (product_id,)).fetchone()
@@ -442,12 +478,14 @@ def block_product(product_id):
             new_status = 0 if status[0] == 1 else 1
             cursor.execute("UPDATE products SET is_blocked = ? WHERE id = ?", (new_status, product_id))
             conn.commit()
+
     return redirect(url_for("admin"))
 
 @app.route("/admin/messages")
 def admin_messages():
     if not session.get("is_admin"):
         return redirect(url_for("index"))
+
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -458,12 +496,14 @@ def admin_messages():
             ORDER BY m.created_at DESC
         """)
         messages = cursor.fetchall()
+
     return render_template("admin_messages.html", messages=messages)
 
 @app.route("/admin/transfers")
 def admin_transfers():
     if not session.get("is_admin"):
         return redirect(url_for("index"))
+
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -475,6 +515,7 @@ def admin_transfers():
             ORDER BY t.created_at DESC
         """)
         transfers = cursor.fetchall()
+
     return render_template("admin_transfers.html", transfers=transfers)
 
 @app.route("/admin/blocked")
@@ -496,6 +537,7 @@ def admin_blocked():
     return render_template("admin_blocked.html",
                            blocked_users=blocked_users,
                            blocked_products=blocked_products)
+
 
 @app.route("/profile", methods=["GET", "POST"])
 def profile():

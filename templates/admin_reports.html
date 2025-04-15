@@ -1,35 +1,41 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>🚨 신고 내역</h2>
+<h2>🚨 신고 내역 관리</h2>
 
+{% if reports %}
 <table class="product-table">
   <tr>
-    <th>ID</th>
-    <th>타입</th>
-    <th>신고 대상</th>
-    <th>사유</th>
+    <th>신고 ID</th>
+    <th>유형</th>
+    <th>대상 ID</th>
     <th>신고자</th>
-    <th>시간</th>
-    <th>관리</th>
+    <th>사유</th>
+    <th>신고 일시</th>
+    <th>조치</th>
   </tr>
   {% for r in reports %}
   <tr>
-    <td>{{ r[0] }}</td>
-    <td>{{ r[1] }}</td>
-    <td>{{ r[2] }}</td>
-    <td>{{ r[3] }}</td>
-    <td>{{ r[4] }}</td>
-    <td>{{ r[5] }}</td>
+    <td>{{ r[0] }}</td>  <!-- report.id -->
+    <td>{{ r[1] }}</td>  <!-- type: user/product -->
+    <td>{{ r[2] }}</td>  <!-- target_id -->
+    <td>{{ r[4] }}</td>  <!-- reporter username -->
+    <td>{{ r[3] }}</td>  <!-- reason -->
+    <td>{{ r[5] }}</td>  <!-- created_at -->
     <td>
       {% if r[1] == 'user' %}
-        <a href="{{ url_for('block_user', user_id=r[2]) }}">[유저 차단]</a>
-        <a href="{{ url_for('delete_report', report_id=r[0]) }}">[신고 삭제]</a>
+        <a href="{{ url_for('block_user', user_id=r[2]) }}">👤 차단/해제</a> |
+        <a href="{{ url_for('delete_user', user_id=r[2]) }}" onclick="return confirm('정말 해당 유저를 삭제할까요?')">🗑️ 삭제</a>
       {% elif r[1] == 'product' %}
-        <a href="{{ url_for('block_product', product_id=r[2]) }}">[상품 차단]</a>
-        <a href="{{ url_for('delete_report', report_id=r[0]) }}">[신고 삭제]</a>
+        <a href="{{ url_for('block_product', product_id=r[2]) }}">📦 차단/해제</a> |
+        <a href="{{ url_for('delete_reported_product', product_id=r[2]) }}" onclick="return confirm('정말 해당 상품을 삭제할까요?')">🗑️ 삭제</a>
       {% endif %}
+      <br>
+      <a href="{{ url_for('delete_report', report_id=r[0]) }}" style="font-size: 0.85em; color: #c62828;" onclick="return confirm('신고 내역을 삭제하시겠습니까?')">🧹 신고 삭제</a>
     </td>
   </tr>
   {% endfor %}
 </table>
+{% else %}
+<p>신고된 항목이 없습니다.</p>
+{% endif %}
 {% endblock %}
