@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>👤 {{ username }} 님의 프로필</h2>
+
+{% if bio %}
+  <p style="margin-top: 20px; white-space: pre-wrap">{{ bio }}</p>
+{% else %}
+  <p style="color: gray">소개글이 없습니다.</p>
+{% endif %}
+{% endblock %}
