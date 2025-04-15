@@ -59,9 +59,14 @@ def init_db():
         ''')
         conn.commit()
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def index():
-    keyword = request.args.get("keyword", "")
+    keyword = ""
+    if request.method == "POST":
+        keyword = request.form.get("keyword", "")
+    else:
+        keyword = request.args.get("keyword", "")
+
     query = '''
         SELECT id, name, description, price, seller_id, is_blocked, created_at, buyer_id
         FROM products WHERE is_blocked = 0
@@ -74,6 +79,7 @@ def index():
 
     with sqlite3.connect(DB_NAME) as conn:
         products = conn.execute(query, params).fetchall()
+
     return render_template("index.html", products=products, keyword=keyword)
 
 @app.route("/register", methods=["GET", "POST"])
