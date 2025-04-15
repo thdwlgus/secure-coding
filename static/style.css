@@ -295,3 +295,37 @@ button:hover {
   white-space: pre-wrap;
   color: #444;
 }
+
+/* 관리자 테이블 스타일 개선 */
+.product-table,
+.trade-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  font-size: 15px;
+}
+
+.product-table th,
+.product-table td,
+.trade-table th,
+.trade-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+.product-table th,
+.trade-table th {
+  background-color: #f9f9f9;
+  font-weight: bold;
+  color: #333;
+}
+
+.section-title {
+  margin-top: 40px;
+  margin-bottom: 10px;
+  font-size: 20px;
+  color: #444;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 5px;
+}

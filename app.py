@@ -225,17 +225,36 @@ def transfer():
 @app.route("/admin")
 def admin():
     if not session.get("is_admin"):
+        flash("접근 권한이 없습니다.", "danger")
         return redirect(url_for("index"))
 
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         users = cursor.execute("SELECT id, username, email, is_blocked FROM users WHERE is_admin = 0").fetchall()
         products = cursor.execute("SELECT id, name, is_blocked FROM products").fetchall()
+
+        # 관리자용 통계 및 최근 활동 로그
         stats = {
             "total_users": cursor.execute("SELECT COUNT(*) FROM users").fetchone()[0],
             "total_products": cursor.execute("SELECT COUNT(*) FROM products").fetchone()[0],
             "sold_products": cursor.execute("SELECT COUNT(*) FROM products WHERE buyer_id IS NOT NULL").fetchone()[0],
+            "latest_messages": cursor.execute("""
+                SELECT u1.username, u2.username, m.message, m.created_at
+                FROM messages m
+                JOIN users u1 ON m.sender_id = u1.id
+                JOIN users u2 ON m.receiver_id = u2.id
+                ORDER BY m.created_at DESC LIMIT 5
+            """).fetchall(),
+            "latest_transfers": cursor.execute("""
+                SELECT u1.username, u2.username, p.name, t.amount, t.created_at
+                FROM transfers t
+                JOIN users u1 ON t.sender_id = u1.id
+                JOIN users u2 ON t.receiver_id = u2.id
+                LEFT JOIN products p ON t.product_id = p.id
+                ORDER BY t.created_at DESC LIMIT 5
+            """).fetchall()
         }
+
     return render_template("admin.html", users=users, products=products, stats=stats)
 
 @app.route("/admin/reset_products")
