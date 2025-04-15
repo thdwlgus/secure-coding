@@ -238,6 +238,19 @@ def admin():
         }
     return render_template("admin.html", users=users, products=products, stats=stats)
 
+@app.route("/admin/reset_products")
+def reset_products():
+    if not session.get("is_admin"):
+        flash("접근 권한이 없습니다.", "danger")
+        return redirect(url_for("index"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        conn.execute("DELETE FROM products")
+        conn.commit()
+
+    flash("모든 상품이 삭제되었습니다.", "info")
+    return redirect(url_for("admin"))
+
 @app.route("/admin/reset_users")
 def reset_users():
     if not session.get("is_admin"):
