@@ -416,6 +416,26 @@ def admin_transfers():
         transfers = cursor.fetchall()
     return render_template("admin_transfers.html", transfers=transfers)
 
+@app.route("/admin/blocked")
+def admin_blocked():
+    if not session.get("is_admin"):
+        flash("접근 권한이 없습니다.", "danger")
+        return redirect(url_for("index"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        blocked_users = cursor.execute("""
+            SELECT id, username, email FROM users WHERE is_blocked = 1
+        """).fetchall()
+
+        blocked_products = cursor.execute("""
+            SELECT id, name, price FROM products WHERE is_blocked = 1
+        """).fetchall()
+
+    return render_template("admin_blocked.html",
+                           blocked_users=blocked_users,
+                           blocked_products=blocked_products)
+
 @app.route("/profile", methods=["GET", "POST"])
 def profile():
     if "user_id" not in session:

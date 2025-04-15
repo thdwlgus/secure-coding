@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🚫 차단된 유저 및 상품 목록</h2>
+
+<h3>🙅 차단된 유저</h3>
+{% if blocked_users %}
+  <table class="product-table">
+    <tr>
+      <th>사용자 ID</th>
+      <th>이름</th>
+      <th>이메일</th>
+    </tr>
+    {% for u in blocked_users %}
+    <tr>
+      <td>{{ u[0] }}</td>
+      <td>{{ u[1] }}</td>
+      <td>{{ u[2] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p style="color: gray;">차단된 유저가 없습니다.</p>
+{% endif %}
+
+<br>
+
+<h3>📦 차단된 상품</h3>
+{% if blocked_products %}
+  <table class="product-table">
+    <tr>
+      <th>상품 ID</th>
+      <th>상품명</th>
+      <th>가격</th>
+    </tr>
+    {% for p in blocked_products %}
+    <tr>
+      <td>{{ p[0] }}</td>
+      <td>{{ p[1] }}</td>
+      <td>{{ p[2] }}원</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p style="color: gray;">차단된 상품이 없습니다.</p>
+{% endif %}
+{% endblock %}
