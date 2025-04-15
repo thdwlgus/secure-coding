@@ -1,11 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_socketio import SocketIO, emit
 import sqlite3
 import os
 
 app = Flask(__name__)
 app.secret_key = "super-secret-key"
 DB_NAME = "market.db"
+
+app = Flask(__name__)
+app.secret_key = "super-secret-key"
+socketio = SocketIO(app)  # 기존 app.run() 대신 socketio.run() 필요
 
 def init_db():
     with sqlite3.connect(DB_NAME) as conn:
@@ -462,6 +467,20 @@ def view_user(user_id):
             return redirect(url_for("index"))
     return render_template("view_user.html", username=user[0], bio=user[1])
 
+@app.route("/group_chat")
+def group_chat():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    return render_template("group_chat.html")
+
+@socketio.on("send_message")
+def handle_message(data):
+    username = session.get("username", "익명")
+    emit("receive_message", {
+        "user": username,
+        "message": data["message"]
+    }, broadcast=True)
+
 # ✅ 앱 실행
 if __name__ == "__main__":
     if not os.path.exists(DB_NAME):
@@ -484,4 +503,5 @@ if __name__ == "__main__":
                 conn.commit()
                 print("✅ 기본 관리자 계정이 생성되었습니다.")
 
-    app.run(debug=True)
+    # Flask 대신 SocketIO로 실행
+    socketio.run(app, debug=True)

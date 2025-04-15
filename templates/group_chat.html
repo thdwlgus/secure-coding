@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>💬 실시간 그룹 채팅</h2>
+<div id="chat-box" class="chat-box"></div>
+<form id="chat-form">
+  <input type="text" id="chat-input" placeholder="메시지를 입력하세요" autocomplete="off" />
+  <button type="submit">전송</button>
+</form>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+  const socket = io();
+  const chatBox = document.getElementById("chat-box");
+  const chatForm = document.getElementById("chat-form");
+  const chatInput = document.getElementById("chat-input");
+
+  socket.on("receive_message", data => {
+    const msg = document.createElement("div");
+    msg.innerHTML = `<strong>${data.user}:</strong> ${data.message}`;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
+
+  chatForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (message) {
+      socket.emit("send_message", { message });
+      chatInput.value = "";
+    }
+  });
+</script>
+{% endblock %}
