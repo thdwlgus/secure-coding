@@ -1,0 +1,10 @@
+{% extends "base.html" %} {% block content %}
+<h2>📬 채팅 목록</h2>
+<ul class="product-list">
+  {% for uid, uname in chat_users %}
+  <li>
+    <a href="{{ url_for('chat', user_id=uid) }}">💬 {{ uname }} 님과의 대화</a>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock %}
