@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🙋‍♂️ 내 프로필</h2>
+
+<form method="POST">
+  <label for="bio">소개글</label>
+  <textarea name="bio" rows="5" placeholder="자기소개를 입력하세요">{{ bio or "" }}</textarea>
+  <button type="submit">소개글 저장</button>
+</form>
+
+{% if bio %}
+  <hr />
+  <div>
+    <strong>📝 현재 소개글:</strong>
+    <p style="margin-top: 10px; white-space: pre-wrap;">{{ bio }}</p>
+  </div>
+{% endif %}
+
+<hr />
+<p>
+  <a href="{{ url_for('change_password') }}">🔒 비밀번호 변경</a>
+</p>
+{% endblock %}
