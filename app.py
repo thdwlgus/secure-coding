@@ -370,8 +370,11 @@ def profile():
             cursor.execute("UPDATE users SET bio = ? WHERE id = ?", (bio, session["user_id"]))
             conn.commit()
             flash("소개글이 저장되었습니다.", "success")
+            return redirect(url_for("profile"))  # ✅ 이 redirect가 반드시 있어야 중복 렌더링 방지됨!
+
         cursor.execute("SELECT username, email, bio FROM users WHERE id = ?", (session["user_id"],))
         user = cursor.fetchone()
+
     return render_template("profile.html", user=user)
 
 @app.route("/change_password", methods=["GET", "POST"])
