@@ -1,0 +1,21 @@
+{% extends "base.html" %} 
+{% block content %}
+<h2>{{ product[1] }}</h2>
+
+<p><strong>가격:</strong> {{ product[3] }}원</p>
+<p><strong>설명:</strong> {{ product[2] or "설명이 없습니다." }}</p>
+<p><strong>등록일:</strong> {{ product[6] }}</p>
+
+{% if session.get("user_id") and product[4] != session["user_id"] and not product[7] %}
+<p>
+  <a class="btn" href="{{ url_for('chat', user_id=product[4]) }}">💬 판매자와 채팅하기</a>
+</p>
+<p>
+  <a href="{{ url_for('view_user', user_id=product[4]) }}">🔎 {{ product[4] }}번 판매자 프로필</a>
+</p>
+{% endif %}
+
+{% if product[7] %}
+<p class="status-sold"><strong>⚠️ 이 상품은 판매 완료되었습니다.</strong></p>
+{% endif %}
+{% endblock %}
