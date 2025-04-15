@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tiny Platform</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="navbar">
+    <div class="logo">
+      <a href="{{ url_for('index') }}">🛒 Tiny Platform</a>
+    </div>
+    <div class="menu">
+      {% if session.get("username") %}
+        👋 {{ session["username"] }} |
+        <a href="{{ url_for('dashboard') }}">내 대시보드</a> |
+        <a href="{{ url_for('profile') }}">마이페이지</a> |
+        <a href="{{ url_for('chat_list') }}">채팅</a> |
+        <a href="{{ url_for('transfer') }}">송금</a> |
+        {% if session.get("is_admin") %}
+        <a href="{{ url_for('admin') }}">관리자</a> |
+        {% endif %}
+        <a href="{{ url_for('logout') }}">로그아웃</a>
+      {% else %}
+        <a href="{{ url_for('login') }}">로그인</a> |
+        <a href="{{ url_for('register') }}">회원가입</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert {{ category }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
