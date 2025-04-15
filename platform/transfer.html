@@ -1,0 +1,25 @@
+{% extends "base.html" %} {% block content %}
+<h2>💸 포인트 송금 및 상품 구매</h2>
+<form method="POST" class="form">
+  <label for="receiver_id">받을 사람</label>
+  <select name="receiver_id" required>
+    {% for u in users %}
+    <option value="{{ u[0] }}">{{ u[1] }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="amount">보낼 금액 (₩)</label>
+  <input type="number" name="amount" min="1" required />
+
+  <label for="product_id">구매할 상품</label>
+  <select name="product_id" required>
+    {% for p in products %}
+    <option value="{{ p[0] }}">{{ p[1] }} - {{ p[2] }}원</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit">송금하고 구매하기</button>
+</form>
+<hr />
+<p><strong>📍 내 잔액:</strong> <span style="color: green; font-weight: bold">{{ balance }} 원</span></p>
+{% endblock %}
