@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🚨 신고 내역</h2>
+
+<table class="product-table">
+  <tr>
+    <th>ID</th>
+    <th>타입</th>
+    <th>신고 대상</th>
+    <th>사유</th>
+    <th>신고자</th>
+    <th>시간</th>
+    <th>관리</th>
+  </tr>
+  {% for r in reports %}
+  <tr>
+    <td>{{ r[0] }}</td>
+    <td>{{ r[1] }}</td>
+    <td>{{ r[2] }}</td>
+    <td>{{ r[3] }}</td>
+    <td>{{ r[4] }}</td>
+    <td>{{ r[5] }}</td>
+    <td>
+      {% if r[1] == 'user' %}
+        <a href="{{ url_for('block_user', user_id=r[2]) }}">[유저 차단]</a>
+        <a href="{{ url_for('delete_report', report_id=r[0]) }}">[신고 삭제]</a>
+      {% elif r[1] == 'product' %}
+        <a href="{{ url_for('block_product', product_id=r[2]) }}">[상품 차단]</a>
+        <a href="{{ url_for('delete_report', report_id=r[0]) }}">[신고 삭제]</a>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

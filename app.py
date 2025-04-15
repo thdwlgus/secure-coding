@@ -62,6 +62,18 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # 신고 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                type TEXT NOT NULL CHECK (type IN ('user', 'product')),
+                target_id INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                reporter_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         conn.commit()
 
 @app.route("/", methods=["GET", "POST"])
@@ -319,6 +331,56 @@ def admin():
         }
 
     return render_template("admin.html", users=users, products=products, stats=stats)
+
+@app.route("/report", methods=["GET", "POST"])
+def report():
+    if "user_id" not in session:
+        flash("로그인이 필요합니다.", "danger")
+        return redirect(url_for("login"))
+    
+    if request.method == "POST":
+        report_type = request.form["type"]
+        target_id = int(request.form["target_id"])
+        reason = request.form["reason"]
+        reporter_id = session["user_id"]
+
+        with sqlite3.connect(DB_NAME) as conn:
+            conn.execute("""
+                INSERT INTO reports (type, target_id, reason, reporter_id)
+                VALUES (?, ?, ?, ?)
+            """, (report_type, target_id, reason, reporter_id))
+            conn.commit()
+            flash("신고가 접수되었습니다.", "success")
+            return redirect(url_for("index"))
+
+    return render_template("report.html")
+
+@app.route("/admin/reports")
+def admin_reports():
+    if not session.get("is_admin"):
+        return redirect(url_for("index"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT r.id, r.type, r.target_id, r.reason, u.username, r.created_at
+            FROM reports r
+            JOIN users u ON r.reporter_id = u.id
+            ORDER BY r.created_at DESC
+        """)
+        reports = cursor.fetchall()
+    return render_template("admin_reports.html", reports=reports)
+
+@app.route("/admin/delete_report/<int:report_id>")
+def delete_report(report_id):
+    if not session.get("is_admin"):
+        return redirect(url_for("index"))
+
+    with sqlite3.connect(DB_NAME) as conn:
+        conn.execute("DELETE FROM reports WHERE id = ?", (report_id,))
+        conn.commit()
+    flash("신고가 삭제되었습니다.", "info")
+    return redirect(url_for("admin_reports"))
 
 @app.route("/admin/reset_products")
 def reset_products():

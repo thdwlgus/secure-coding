@@ -1,4 +1,20 @@
-{% extends "base.html" %} {% block content %}
+{% extends "base.html" %}
+{% block content %}
 <h2>🚨 신고하기</h2>
-<p>신고 기능은 현재 준비 중입니다.</p>
+
+<form method="POST">
+  <label for="type">신고 대상</label>
+  <select name="type" required>
+    <option value="user">유저</option>
+    <option value="product">상품</option>
+  </select>
+
+  <label for="target_id">대상 ID</label>
+  <input type="number" name="target_id" required />
+
+  <label for="reason">신고 사유</label>
+  <textarea name="reason" rows="4" required></textarea>
+
+  <button type="submit">신고 제출</button>
+</form>
 {% endblock %}
