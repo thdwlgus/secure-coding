@@ -1,30 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="alert {{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+<h2>👋 내 프로필</h2>
 
-  <h2>👋 내 프로필</h2>
+{% if user[2] %}
+  <div class="section-title">📌 소개글</div>
+  <div class="bio-box">{{ user[2] }}</div>
+{% endif %}
 
-  {% if user[2] %}
-    <div class="section-title">📌 소개글</div>
-    <div class="bio-box">{{ user[2] }}</div>
-  {% endif %}
+<form method="POST">
+  <label for="bio">소개글 수정</label>
+  <textarea name="bio" rows="4" placeholder="자기소개를 입력하세요">{{ user[2] or '' }}</textarea>
+  <button type="submit">소개글 저장</button>
+</form>
 
-  <form method="POST">
-    <label for="bio">소개글 수정</label>
-    <textarea name="bio" rows="4" placeholder="자기소개를 입력하세요">{{ user[2] or '' }}</textarea>
-    <button type="submit">소개글 저장</button>
-  </form>
+<hr />
+<p>🔒 <a href="{{ url_for('change_password') }}">비밀번호 변경</a></p>
 
-  <hr>
-  <p>🔒 <a href="{{ url_for('change_password') }}">비밀번호 변경</a></p>
-
-</div>
 {% endblock %}
