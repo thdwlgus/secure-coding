@@ -1,0 +1,12 @@
+{% extends "base.html" %} {% block content %}
+<h2>📦 상품 등록</h2>
+<form method="POST" class="form">
+  <label>상품명</label>
+  <input type="text" name="name" required>
+  <label>설명</label>
+  <textarea name="description" rows="3"></textarea>
+  <label>가격 (₩)</label>
+  <input type="number" name="price" min="0" required>
+  <button type="submit">등록하기</button>
+</form>
+{% endblock %}
