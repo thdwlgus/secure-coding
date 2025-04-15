@@ -329,12 +329,3 @@ button:hover {
   border-bottom: 2px solid #ccc;
   padding-bottom: 5px;
 }
-
-.bio-box {
-  background-color: #f9f9f9;
-  border: 1px solid #ccc;
-  padding: 15px;
-  border-radius: 6px;
-  margin-bottom: 20px;
-  white-space: pre-wrap;
-}
