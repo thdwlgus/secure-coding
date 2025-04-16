@@ -35,6 +35,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
 def init_db():
     with sqlite3.connect(DB_NAME) as conn:
         c = conn.cursor()
+
         # users 테이블
         c.execute('''
             CREATE TABLE IF NOT EXISTS users (
@@ -48,6 +49,7 @@ def init_db():
                 bio TEXT
             )
         ''')
+
         # products 테이블
         c.execute('''
             CREATE TABLE IF NOT EXISTS products (
@@ -61,6 +63,7 @@ def init_db():
                 buyer_id INTEGER
             )
         ''')
+
         # messages 테이블
         c.execute('''
             CREATE TABLE IF NOT EXISTS messages (
@@ -71,7 +74,8 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        # transfers 테이블
+
+        # transfers 테이블 (송금 기록)
         c.execute('''
             CREATE TABLE IF NOT EXISTS transfers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,7 +86,20 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        # ✅ 신고 테이블 (오류 수정됨)
+
+        # ✅ 거래 내역 테이블 (신규 추가)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER NOT NULL,
+                seller_id INTEGER NOT NULL,
+                buyer_id INTEGER NOT NULL,
+                price INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # ✅ 신고 테이블
         c.execute('''
             CREATE TABLE IF NOT EXISTS reports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,6 +110,7 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
         conn.commit()
 
 @app.route("/", methods=["GET", "POST"])
@@ -323,7 +341,7 @@ def transfer():
     if "last_auth" not in session or time.time() - session["last_auth"] > 300:
         flash("보안을 위해 다시 로그인해주세요.", "warning")
         return redirect(url_for("login"))
-    
+
     uid = session["user_id"]
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
@@ -334,18 +352,28 @@ def transfer():
             receiver_id = int(request.form["receiver_id"])
             amount = int(request.form["amount"])
             product_id = int(request.form["product_id"])
+
+            # ✅ 잔액 부족 방어
             if balance < amount:
                 flash("잔액 부족", "danger")
                 return redirect(url_for("transfer"))
+
+            # ✅ 이체 및 구매 처리
             cursor.execute("UPDATE users SET balance = balance - ? WHERE id = ?", (amount, uid))
             cursor.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, receiver_id))
             cursor.execute("UPDATE products SET buyer_id = ? WHERE id = ?", (uid, product_id))
-            cursor.execute("INSERT INTO transfers (sender_id, receiver_id, product_id, amount) VALUES (?, ?, ?, ?)",
-                           (uid, receiver_id, product_id, amount))
+
+            # ✅ transfers 테이블 기록
+            cursor.execute("""
+                INSERT INTO transfers (sender_id, receiver_id, product_id, amount)
+                VALUES (?, ?, ?, ?)
+            """, (uid, receiver_id, product_id, amount))
+
             conn.commit()
             flash("송금 완료", "success")
             return redirect(url_for("dashboard"))
 
+        # ✅ 수신 가능한 사용자 및 상품 목록 조회
         users = cursor.execute("SELECT id, username FROM users WHERE id != ?", (uid,)).fetchall()
         products = cursor.execute("""
             SELECT id, name, price FROM products
@@ -361,32 +389,43 @@ def admin():
 
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
+
         users = cursor.execute("SELECT id, username, email, is_blocked FROM users WHERE is_admin = 0").fetchall()
         products = cursor.execute("SELECT id, name, is_blocked FROM products").fetchall()
 
-        # 관리자용 통계 및 최근 활동 로그
         stats = {
-            "total_users": cursor.execute("SELECT COUNT(*) FROM users").fetchone()[0],
-            "total_products": cursor.execute("SELECT COUNT(*) FROM products").fetchone()[0],
-            "sold_products": cursor.execute("SELECT COUNT(*) FROM products WHERE buyer_id IS NOT NULL").fetchone()[0],
-            "latest_messages": cursor.execute("""
-                SELECT u1.username, u2.username, m.message, m.created_at
-                FROM messages m
-                JOIN users u1 ON m.sender_id = u1.id
-                JOIN users u2 ON m.receiver_id = u2.id
-                ORDER BY m.created_at DESC LIMIT 5
-            """).fetchall(),
-            "latest_transfers": cursor.execute("""
-                SELECT u1.username, u2.username, p.name, t.amount, t.created_at
-                FROM transfers t
-                JOIN users u1 ON t.sender_id = u1.id
-                JOIN users u2 ON t.receiver_id = u2.id
-                LEFT JOIN products p ON t.product_id = p.id
-                ORDER BY t.created_at DESC LIMIT 5
-            """).fetchall()
-        }
+    "total_users": cursor.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+    "blocked_users": cursor.execute("SELECT COUNT(*) FROM users WHERE is_blocked = 1").fetchone()[0],
+    "total_products": cursor.execute("SELECT COUNT(*) FROM products").fetchone()[0],
+    "sold_products": cursor.execute("SELECT COUNT(*) FROM products WHERE buyer_id IS NOT NULL").fetchone()[0],
+    "total_messages": cursor.execute("SELECT COUNT(*) FROM messages").fetchone()[0],
+    "latest_messages": cursor.execute("""
+        SELECT u1.username, u2.username, m.message, m.created_at
+        FROM messages m
+        JOIN users u1 ON m.sender_id = u1.id
+        JOIN users u2 ON m.receiver_id = u2.id
+        ORDER BY m.created_at DESC
+        LIMIT 5
+    """).fetchall(),
+    "latest_transfers": cursor.execute("""
+        SELECT p.name, u1.username, u2.username, t.amount, t.created_at
+        FROM transfers t
+        JOIN users u1 ON t.sender_id = u1.id
+        JOIN users u2 ON t.receiver_id = u2.id
+        LEFT JOIN products p ON t.product_id = p.id
+        ORDER BY t.created_at DESC
+        LIMIT 5
+    """).fetchall()
+}
 
-    return render_template("admin.html", users=users, products=products, stats=stats)
+    return render_template(
+    "admin.html",
+    users=users,
+    products=products,
+    stats=stats,
+    messages=stats["latest_messages"],
+    trades=stats["latest_transfers"]
+)
 
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -740,6 +779,19 @@ def handle_send_message(message):
     safe_message = html.escape(message)
     user_message_times[user_id].append(now)
 
+    # ✅ messages 테이블에 저장
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+
+        # 수신자 ID가 명시되지 않으므로 관리자 수신자 ID 1번으로 저장하거나 NULL 처리
+        receiver_id = 1  # 또는 None
+        cursor.execute('''
+            INSERT INTO messages (sender_id, receiver_id, message)
+            VALUES (?, ?, ?)
+        ''', (user_id, receiver_id, safe_message))
+        conn.commit()
+
+    # ✅ 메시지 브로드캐스트
     emit("receive_message", {
         "username": username,
         "message": safe_message
