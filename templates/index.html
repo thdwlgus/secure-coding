@@ -3,12 +3,12 @@
 <h2>중고 상품 목록</h2>
 
 <form method="POST">
-  {{ csrf_token() }}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input
     type="text"
     name="keyword"
     placeholder="상품명을 검색하세요"
-    value="{{ keyword }}"
+    value="{{ keyword | default('', true) | e }}"
   />
   <button type="submit">🔍 검색</button>
 </form>

@@ -13,7 +13,7 @@
 <p style="text-align: center; color: gray">아직 메시지가 없습니다.</p>
 {% endif %}
 <form method="POST" class="form">
-  {{ csrf_token() }}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <textarea name="message" placeholder="메시지를 입력하세요" required></textarea>
   <button type="submit">전송</button>
 </form>

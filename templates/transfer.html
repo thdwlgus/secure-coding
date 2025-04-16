@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% block content %}
 <h2>💸 포인트 송금 및 상품 구매</h2>
 <form method="POST" class="form">
-  {{ csrf_token() }}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label for="receiver_id">받을 사람</label>
   <select name="receiver_id" required>
     {% for u in users %}

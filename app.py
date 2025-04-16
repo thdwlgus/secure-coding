@@ -84,15 +84,14 @@ def init_db():
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    keyword = ""
-    if request.method == "POST":
-        keyword = request.form.get("keyword", "")
-    else:
-        keyword = request.args.get("keyword", "")
+    # ✅ keyword를 str로 안전하게 변환하여 입력값 비정상 타입 방지
+    keyword = str(request.form.get("keyword", "")) if request.method == "POST" else str(request.args.get("keyword", ""))
 
+    # ✅ 검색 쿼리 구성
     query = '''
         SELECT id, name, description, price, seller_id, is_blocked, created_at, buyer_id
-        FROM products WHERE is_blocked = 0
+        FROM products
+        WHERE is_blocked = 0
     '''
     params = []
     if keyword:
@@ -100,10 +99,13 @@ def index():
         params.append(f"%{keyword}%")
     query += " ORDER BY created_at DESC"
 
+    # ✅ DB에서 상품 목록 불러오기
     with sqlite3.connect(DB_NAME) as conn:
         products = conn.execute(query, params).fetchall()
 
+    # ✅ index.html에 전달
     return render_template("index.html", products=products, keyword=keyword)
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():

@@ -7,7 +7,7 @@
 </div>
 
 <form id="chat-form">
-  {{ csrf_token() }}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="text" id="message" placeholder="메시지를 입력하세요" autocomplete="off" style="width: 85%; padding: 10px;" />
   <button type="submit" style="width: 13%;">전송</button>
 </form>

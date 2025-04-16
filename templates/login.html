@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% block content %}
 <h2>🔐 로그인</h2>
 <form method="POST" class="form">
-  {{ csrf_token() }}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label>이메일</label>
   <input type="text" name="email" required>
   <label>비밀번호</label>
