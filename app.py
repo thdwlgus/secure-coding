@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_socketio import SocketIO, emit
+from flask_wtf.csrf import CSRFProtect
 import sqlite3
 import os
 
@@ -8,7 +9,11 @@ app = Flask(__name__)
 app.secret_key = "super-secret-key"
 DB_NAME = "market.db"
 
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SECURE"] = False
+
 app = Flask(__name__)
+csrf = CSRFProtect(app)
 app.secret_key = "super-secret-key"
 socketio = SocketIO(app)  # 기존 app.run() 대신 socketio.run() 필요
 
@@ -596,6 +601,13 @@ def group_chat():
         flash("로그인이 필요합니다.", "danger")
         return redirect(url_for("login"))
     return render_template("group_chat.html")
+
+@app.after_request
+def set_security_headers(response):
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
 
 @socketio.on("send_message")
 def handle_group_message(message):

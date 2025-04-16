@@ -1,6 +1,7 @@
 {% extends "base.html" %} {% block content %}
 <h2>📝 회원가입</h2>
 <form method="POST" class="form">
+  {{ csrf_token() }}
   <label>사용자명</label>
   <input type="text" name="username" required>
   <label>이메일</label>

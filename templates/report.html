@@ -4,6 +4,7 @@
   <h2 style="margin-bottom: 30px;">🚨 신고하기</h2>
 
   <form method="POST">
+    {{ csrf_token() }}
     <label for="type">신고 대상</label>
     <select name="type" id="type" required>
       <option value="user" {% if report_type == 'user' %}selected{% endif %}>유저</option>

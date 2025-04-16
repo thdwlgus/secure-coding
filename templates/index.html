@@ -3,6 +3,7 @@
 <h2>중고 상품 목록</h2>
 
 <form method="POST">
+  {{ csrf_token() }}
   <input
     type="text"
     name="keyword"

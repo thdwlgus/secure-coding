@@ -1,6 +1,7 @@
 {% extends "base.html" %} {% block content %}
 <h2>📦 상품 등록</h2>
 <form method="POST" class="form">
+  {{ csrf_token() }}
   <label>상품명</label>
   <input type="text" name="name" required>
   <label>설명</label>
