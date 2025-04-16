@@ -2,8 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_socketio import SocketIO, emit
 from flask_wtf.csrf import CSRFProtect
-import sqlite3
-import os
+from datetime import timedelta
+import sqlite3, os, time, html, re
 
 app = Flask(__name__)
 app.secret_key = "super-secret-key"
@@ -11,6 +11,9 @@ DB_NAME = "market.db"
 
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = False
+
+app.permanent_session_lifetime = timedelta(minutes=30)
+session["last_auth"] = time.time()
 
 app = Flask(__name__)
 csrf = CSRFProtect(app)
@@ -120,21 +123,45 @@ def register():
                 flash("이미 존재하는 사용자입니다.", "danger")
     return render_template("register.html")
 
+login_attempts = {}  # {ip_address: {"count": int, "last_attempt": timestamp}}
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         email = request.form["email"]
         password = request.form["password"]
+        ip = request.remote_addr
+
+        # ⛔ 로그인 시도 제한 체크
+        attempt = login_attempts.get(ip, {"count": 0, "last_attempt": 0})
+        if attempt["count"] >= 5 and time.time() - attempt["last_attempt"] < 300:
+            flash("5회 이상 실패로 잠시 로그인 차단되었습니다. 잠시 후 다시 시도해주세요.", "danger")
+            return render_template("login.html")
+
         with sqlite3.connect(DB_NAME) as conn:
             user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
             if user and check_password_hash(user[3], password):
+                # ✅ 세션 유지 시간 설정
+                session.permanent = True
                 session["user_id"] = user[0]
                 session["username"] = user[1]
                 session["is_admin"] = user[4]
+                session["last_auth"] = time.time()
+
+                # ✅ 로그인 성공 시 기록 초기화
+                if ip in login_attempts:
+                    del login_attempts[ip]
+
                 flash("로그인 성공!", "success")
                 return redirect(url_for("index"))
             else:
+                # 실패 횟수 누적
+                login_attempts[ip] = {
+                    "count": attempt["count"] + 1,
+                    "last_attempt": time.time()
+                }
                 flash("로그인 실패", "danger")
+
     return render_template("login.html")
 
 @app.route("/logout")
@@ -180,6 +207,11 @@ def view_product(product_id):
 @app.route("/product/edit/<int:product_id>", methods=["GET", "POST"])
 def edit_product(product_id):
     if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    # ✅ 민감 작업 보호: 로그인 후 5분 이내만 접근 가능
+    if "last_auth" not in session or time.time() - session["last_auth"] > 300:
+        flash("보안을 위해 다시 로그인해주세요.", "warning")
         return redirect(url_for("login"))
 
     with sqlite3.connect(DB_NAME) as conn:
@@ -272,6 +304,12 @@ def chat_list():
 def transfer():
     if "user_id" not in session:
         return redirect(url_for("login"))
+    
+    # ✅ 민감 작업 보호: 로그인 후 5분 이내만 접근 가능
+    if "last_auth" not in session or time.time() - session["last_auth"] > 300:
+        flash("보안을 위해 다시 로그인해주세요.", "warning")
+        return redirect(url_for("login"))
+    
     uid = session["user_id"]
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
@@ -352,11 +390,26 @@ def report():
         reporter_id = session["user_id"]
 
         with sqlite3.connect(DB_NAME) as conn:
-            conn.execute("""
+            cursor = conn.cursor()
+
+            # ✅ 동일 사용자의 중복 신고 여부 확인
+            cursor.execute("""
+                SELECT COUNT(*) FROM reports
+                WHERE type = ? AND target_id = ? AND reporter_id = ?
+            """, (type_, target_id, reporter_id))
+            already_reported = cursor.fetchone()[0]
+
+            if already_reported > 0:
+                flash("이미 해당 항목을 신고하셨습니다. 중복 신고는 허용되지 않습니다.", "warning")
+                return redirect(url_for("index"))
+
+            # ✅ 정상 신고 저장
+            cursor.execute("""
                 INSERT INTO reports (type, target_id, reason, reporter_id)
                 VALUES (?, ?, ?, ?)
             """, (type_, target_id, reason, reporter_id))
             conn.commit()
+
             flash("신고가 접수되었습니다.", "success")
         return redirect(url_for("index"))
 
@@ -548,6 +601,12 @@ def admin_blocked():
 def profile():
     if "user_id" not in session:
         return redirect(url_for("login"))
+    
+    # ✅ 민감 작업 보호: 로그인 후 5분 이내만 접근 가능
+    if "last_auth" not in session or time.time() - session["last_auth"] > 300:
+        flash("보안을 위해 다시 로그인해주세요.", "warning")
+        return redirect(url_for("login"))
+    
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         if request.method == "POST":
@@ -566,13 +625,21 @@ def profile():
 def change_password():
     if "user_id" not in session:
         return redirect(url_for("login"))
+
+    # ✅ 민감 작업 보호: 로그인 후 5분 이내만 접근 가능
+    if "last_auth" not in session or time.time() - session["last_auth"] > 300:
+        flash("보안을 위해 다시 로그인해주세요.", "warning")
+        return redirect(url_for("login"))
+
     if request.method == "POST":
         current = request.form["current_password"]
         new = request.form["new_password"]
+
         with sqlite3.connect(DB_NAME) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT password FROM users WHERE id = ?", (session["user_id"],))
             user_pw = cursor.fetchone()[0]
+
             if not check_password_hash(user_pw, current):
                 flash("현재 비밀번호가 틀렸습니다.", "danger")
             else:
@@ -580,6 +647,9 @@ def change_password():
                 cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed, session["user_id"]))
                 conn.commit()
                 flash("비밀번호가 변경되었습니다.", "success")
+                # ✅ 민감 작업 후 인증 시간 갱신
+                session["last_auth"] = time.time()
+
     return render_template("change_password.html")
 
 @app.route("/user/<int:user_id>")
@@ -609,10 +679,77 @@ def set_security_headers(response):
     response.headers["Content-Security-Policy"] = "default-src 'self'"
     return response
 
+MAX_MESSAGE_LENGTH = 300  # 메시지 최대 길이 제한
+MESSAGE_RATE_LIMIT = 5    # 허용 메시지 수
+RATE_LIMIT_WINDOW = 10    # 초 단위 윈도우 (10초 내 5회 허용)
+
+# 사용자별 메시지 전송 기록 (메모리 기반)
+user_message_times = {}
+
 @socketio.on("send_message")
 def handle_group_message(message):
     username = session.get("username", "익명")
-    emit("receive_message", {"username": username, "message": message}, broadcast=True)
+    user_id = session.get("user_id")
+
+    # ✅ 인증되지 않은 사용자 차단
+    if not user_id:
+        return
+
+    now = time.time()
+
+    # ✅ 사용자별 전송 기록 관리
+    if user_id not in user_message_times:
+        user_message_times[user_id] = []
+    recent = [t for t in user_message_times[user_id] if now - t < RATE_LIMIT_WINDOW]
+    user_message_times[user_id] = recent
+
+    if len(recent) >= MESSAGE_RATE_LIMIT:
+        emit("receive_message", {
+            "username": "⚠️ 시스템",
+            "message": f"{RATE_LIMIT_WINDOW}초 내 메시지는 최대 {MESSAGE_RATE_LIMIT}개까지 전송 가능합니다."
+        }, to=request.sid)
+        return
+
+    # ✅ 타입 검증
+    if not isinstance(message, str):
+        return
+
+    message = message.strip()
+    if not message:
+        return
+
+    # ✅ 허용 문자 필터링 (한글, 영문, 숫자, 일부 기호)
+    if not re.match(r'^[\w\sㄱ-ㅎ가-힣.,!?@#\$%&*()\-+=~`\'\"<>^;:/\\|\[\]{}]+$', message):
+        return
+
+    # ✅ 길이 제한
+    if len(message) > MAX_MESSAGE_LENGTH:
+        message = message[:MAX_MESSAGE_LENGTH] + "..."
+
+    # ✅ XSS 방지
+    safe_message = html.escape(message)
+
+    # ✅ 전송 시간 기록 추가
+    user_message_times[user_id].append(now)
+
+    # ✅ 브로드캐스트
+    emit("receive_message", {
+        "username": username,
+        "message": safe_message
+    }, broadcast=True)
+    
+@app.after_request
+def set_security_headers(response):
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none';"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
+
+@app.before_request
+def enforce_https_in_production():
+    if not request.is_secure and not app.debug:
+        return redirect(request.url.replace("http://", "https://"))
 
 # ✅ 앱 실행
 if __name__ == "__main__":
@@ -624,8 +761,11 @@ if __name__ == "__main__":
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
             if not cursor.fetchone():
                 init_db()
+                
+            if os.path.exists(DB_NAME):
+                os.chmod(DB_NAME, 0o600)
 
-            # 관리자 계정 자동 생성
+            # ✅ 관리자 계정 자동 생성
             cursor.execute("SELECT COUNT(*) FROM users WHERE is_admin = 1")
             if cursor.fetchone()[0] == 0:
                 admin_pw = generate_password_hash("admin1234")
@@ -636,5 +776,18 @@ if __name__ == "__main__":
                 conn.commit()
                 print("✅ 기본 관리자 계정이 생성되었습니다.")
 
-    # Flask 대신 SocketIO로 실행
-    socketio.run(app, debug=True)
+    # ✅ TLS 인증서 경로 설정 (certs 폴더 기준)
+    cert_path = os.path.join("certs", "cert.pem")
+    key_path = os.path.join("certs", "key.pem")
+
+    # ✅ HTTPS + WSS 실행 또는 일반 HTTP 실행
+    if os.path.exists(cert_path) and os.path.exists(key_path):
+        print("✅ HTTPS + WSS 모드로 실행됩니다.")
+        socketio.run(app,
+                     host="0.0.0.0",
+                     port=5000,
+                     debug=True,
+                     ssl_context=(cert_path, key_path))
+    else:
+        print("⚠️ 인증서가 없어 HTTP로 실행됩니다. 운영환경에서는 TLS 설정이 필요합니다.")
+        socketio.run(app, host="0.0.0.0", port=5000, debug=True)
