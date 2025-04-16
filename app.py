@@ -760,7 +760,7 @@ if __name__ == "__main__":
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
             if not cursor.fetchone():
                 init_db()
-                
+
             if os.path.exists(DB_NAME):
                 os.chmod(DB_NAME, 0o600)
 
@@ -786,7 +786,8 @@ if __name__ == "__main__":
                      host="0.0.0.0",
                      port=5000,
                      debug=True,
-                     ssl_context=(cert_path, key_path))
+                     certfile=cert_path,
+                     keyfile=key_path)
     else:
         print("⚠️ 인증서가 없어 HTTP로 실행됩니다. 운영환경에서는 TLS 설정이 필요합니다.")
         socketio.run(app, host="0.0.0.0", port=5000, debug=True)
