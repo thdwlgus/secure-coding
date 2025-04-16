@@ -381,19 +381,20 @@ def report():
         flash("로그인이 필요합니다.", "warning")
         return redirect(url_for("login"))
 
-    report_type = request.args.get("type")
-    target_id = request.args.get("target_id")
+    # ✅ GET 요청 시 파라미터 기본값 처리
+    report_type = request.args.get("type", "")
+    target_id = request.args.get("target_id", "")
 
     if request.method == "POST":
         type_ = request.form["type"]
-        target_id = int(request.form["target_id"])
+        target_id = int(request.form["target_id"])  # POST 시만 int로 변환
         reason = request.form["reason"]
         reporter_id = session["user_id"]
 
         with sqlite3.connect(DB_NAME) as conn:
             cursor = conn.cursor()
 
-            # ✅ 동일 사용자의 중복 신고 여부 확인
+            # ✅ 중복 신고 방지
             cursor.execute("""
                 SELECT COUNT(*) FROM reports
                 WHERE type = ? AND target_id = ? AND reporter_id = ?
@@ -404,7 +405,7 @@ def report():
                 flash("이미 해당 항목을 신고하셨습니다. 중복 신고는 허용되지 않습니다.", "warning")
                 return redirect(url_for("index"))
 
-            # ✅ 정상 신고 저장
+            # ✅ 정상 저장
             cursor.execute("""
                 INSERT INTO reports (type, target_id, reason, reporter_id)
                 VALUES (?, ?, ?, ?)
@@ -414,6 +415,7 @@ def report():
             flash("신고가 접수되었습니다.", "success")
         return redirect(url_for("index"))
 
+    # ✅ GET 요청일 경우 신고 대상 정보를 넘겨서 폼에 자동 반영되도록
     return render_template("report.html", report_type=report_type, target_id=target_id)
 
 @app.route("/admin/reports")
