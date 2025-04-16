@@ -41,7 +41,7 @@ venv\Scripts\activate.bat             # Windows
 pip install -r requirements.txt       # 패키지 설치
 ```
 
-### 3. 인증서 생성 (로컬 HTTPS 개발용)
+### 3. 인증서 생성 (HTTPS + WSS)
 
 ```bash
 mkdir certs
