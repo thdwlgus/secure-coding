@@ -40,3 +40,6 @@ pip install -r requirements.txt    # 패키지 설치
 
 ```bash
 python3 app.py
+```
+- 기본 접속 URL : http://localhost:5000
+- 관리자 계정 기본값 : admin@example.com / admin1234
