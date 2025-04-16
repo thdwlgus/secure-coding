@@ -13,7 +13,6 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = False
 
 app.permanent_session_lifetime = timedelta(minutes=30)
-session["last_auth"] = time.time()
 
 app = Flask(__name__)
 csrf = CSRFProtect(app)
