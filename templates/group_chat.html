@@ -2,37 +2,14 @@
 {% block content %}
 <h2>💬 그룹 채팅</h2>
 
-<div id="chat-box" class="chat-box" style="height: 300px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #ccc; padding: 10px;">
-  <!-- 메시지 출력 영역 -->
-</div>
+<div id="chat-box" class="chat-box" style="height: 300px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #ccc; padding: 10px;"></div>
 
 <form id="chat-form">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="text" id="message" placeholder="메시지를 입력하세요" autocomplete="off" style="width: 85%; padding: 10px;" />
   <button type="submit" style="width: 13%;">전송</button>
 </form>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
-<script>
-  const socket = io();
-  const chatBox = document.getElementById("chat-box");
-  const form = document.getElementById("chat-form");
-  const input = document.getElementById("message");
-
-  form.addEventListener("submit", function (e) {
-    e.preventDefault();
-    const msg = input.value.trim();
-    if (msg) {
-      socket.emit("send_message", msg);
-      input.value = "";
-    }
-  });
-
-  socket.on("receive_message", function (data) {
-    const div = document.createElement("div");
-    div.innerHTML = `<strong>${data.username}</strong>: ${data.message}`;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  });
-</script>
+<!-- ✅ 로컬 socket.io 스크립트 & 분리된 JS 파일 사용 -->
+<script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/group_chat.js') }}"></script>
 {% endblock %}

@@ -5,19 +5,32 @@ from flask_wtf.csrf import CSRFProtect
 from datetime import timedelta
 import sqlite3, os, time, html, re
 
+# app = Flask(__name__)
+# app.secret_key = "super-secret-key"
+# DB_NAME = "market.db"
+
+# app.config["SESSION_COOKIE_HTTPONLY"] = True
+# app.config["SESSION_COOKIE_SECURE"] = False
+
+# app.permanent_session_lifetime = timedelta(minutes=30)
+
 app = Flask(__name__)
-app.secret_key = "super-secret-key"
-DB_NAME = "market.db"
 
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SECURE"] = False
-
+# ✅ 보안 관련 설정
+app.secret_key = "your-secret-key"  # 실제 서비스 시 os.urandom 등으로 안전하게 설정
+app.config["SESSION_COOKIE_HTTPONLY"] = True  # JS 접근 방지
+app.config["SESSION_COOKIE_SECURE"] = True    # HTTPS에서만 전송되도록
 app.permanent_session_lifetime = timedelta(minutes=30)
 
-app = Flask(__name__)
+# ✅ CSRF 보호 적용
 csrf = CSRFProtect(app)
-app.secret_key = "super-secret-key"
-socketio = SocketIO(app)  # 기존 app.run() 대신 socketio.run() 필요
+
+# ✅ DB 이름 설정
+DB_NAME = "market.db"
+
+# ✅ Socket.IO 설정 (CORS 허용 및 세션 미관리 명시)
+socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
+
 
 def init_db():
     with sqlite3.connect(DB_NAME) as conn:
@@ -668,39 +681,41 @@ def view_user(user_id):
             return redirect(url_for("index"))
     return render_template("view_user.html", username=user[0], bio=user[1])
 
+MAX_MESSAGE_LENGTH = 300
+MESSAGE_RATE_LIMIT = 5
+RATE_LIMIT_WINDOW = 10
+
+connected_users = {}
+user_message_times = {}
+
 @app.route("/group_chat")
 def group_chat():
     if "user_id" not in session:
-        flash("로그인이 필요합니다.", "danger")
-        return redirect(url_for("login"))
+        return "로그인이 필요합니다."
     return render_template("group_chat.html")
 
-@app.after_request
-def set_security_headers(response):
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Content-Security-Policy"] = "default-src 'self'"
-    return response
+@socketio.on("connect")
+def handle_connect():
+    user_id = session.get("user_id")
+    if user_id:
+        connected_users[request.sid] = user_id
+    else:
+        return False
 
-MAX_MESSAGE_LENGTH = 300  # 메시지 최대 길이 제한
-MESSAGE_RATE_LIMIT = 5    # 허용 메시지 수
-RATE_LIMIT_WINDOW = 10    # 초 단위 윈도우 (10초 내 5회 허용)
-
-# 사용자별 메시지 전송 기록 (메모리 기반)
-user_message_times = {}
+@socketio.on("disconnect")
+def handle_disconnect():
+    connected_users.pop(request.sid, None)
 
 @socketio.on("send_message")
-def handle_group_message(message):
+def handle_send_message(message):
+    sid = request.sid
+    user_id = connected_users.get(sid)
     username = session.get("username", "익명")
-    user_id = session.get("user_id")
 
-    # ✅ 인증되지 않은 사용자 차단
     if not user_id:
         return
 
     now = time.time()
-
-    # ✅ 사용자별 전송 기록 관리
     if user_id not in user_message_times:
         user_message_times[user_id] = []
     recent = [t for t in user_message_times[user_id] if now - t < RATE_LIMIT_WINDOW]
@@ -709,33 +724,22 @@ def handle_group_message(message):
     if len(recent) >= MESSAGE_RATE_LIMIT:
         emit("receive_message", {
             "username": "⚠️ 시스템",
-            "message": f"{RATE_LIMIT_WINDOW}초 내 메시지는 최대 {MESSAGE_RATE_LIMIT}개까지 전송 가능합니다."
-        }, to=request.sid)
+            "message": f"{RATE_LIMIT_WINDOW}초 내 최대 {MESSAGE_RATE_LIMIT}개까지 전송 가능합니다."
+        }, to=sid)
         return
 
-    # ✅ 타입 검증
-    if not isinstance(message, str):
+    if not isinstance(message, str) or not message.strip():
         return
 
-    message = message.strip()
-    if not message:
-        return
-
-    # ✅ 허용 문자 필터링 (한글, 영문, 숫자, 일부 기호)
     if not re.match(r'^[\w\sㄱ-ㅎ가-힣.,!?@#\$%&*()\-+=~`\'\"<>^;:/\\|\[\]{}]+$', message):
         return
 
-    # ✅ 길이 제한
     if len(message) > MAX_MESSAGE_LENGTH:
         message = message[:MAX_MESSAGE_LENGTH] + "..."
 
-    # ✅ XSS 방지
     safe_message = html.escape(message)
-
-    # ✅ 전송 시간 기록 추가
     user_message_times[user_id].append(now)
 
-    # ✅ 브로드캐스트
     emit("receive_message", {
         "username": username,
         "message": safe_message
@@ -756,34 +760,41 @@ def enforce_https_in_production():
 
 # ✅ 앱 실행
 if __name__ == "__main__":
-    if not os.path.exists(DB_NAME):
-        init_db()
-    else:
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
-            if not cursor.fetchone():
-                init_db()
+    # ✅ DB 초기화
+    def initialize_database():
+        if not os.path.exists(DB_NAME):
+            init_db()
+        else:
+            with sqlite3.connect(DB_NAME) as conn:
+                cursor = conn.cursor()
 
-            if os.path.exists(DB_NAME):
+                # 필수 테이블 확인
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
+                if not cursor.fetchone():
+                    init_db()
+
+                # 권한 설정 (리눅스에서만 작동)
                 os.chmod(DB_NAME, 0o600)
 
-            # ✅ 관리자 계정 자동 생성
-            cursor.execute("SELECT COUNT(*) FROM users WHERE is_admin = 1")
-            if cursor.fetchone()[0] == 0:
-                admin_pw = generate_password_hash("admin1234")
-                cursor.execute("""
-                    INSERT INTO users (username, email, password, is_admin)
-                    VALUES (?, ?, ?, 1)
-                """, ("관리자", "admin@example.com", admin_pw))
-                conn.commit()
-                print("✅ 기본 관리자 계정이 생성되었습니다.")
+                # ✅ 관리자 계정이 없으면 자동 생성
+                cursor.execute("SELECT COUNT(*) FROM users WHERE is_admin = 1")
+                if cursor.fetchone()[0] == 0:
+                    admin_pw = generate_password_hash("admin1234")
+                    cursor.execute("""
+                        INSERT INTO users (username, email, password, is_admin)
+                        VALUES (?, ?, ?, 1)
+                    """, ("관리자", "admin@example.com", admin_pw))
+                    conn.commit()
+                    print("✅ 기본 관리자 계정이 생성되었습니다.")
 
-    # ✅ TLS 인증서 경로 설정 (certs 폴더 기준)
+    # DB 초기화 실행
+    initialize_database()
+
+    # ✅ 인증서 경로 설정 (TLS 기반 WSS 지원)
     cert_path = os.path.join("certs", "cert.pem")
     key_path = os.path.join("certs", "key.pem")
 
-    # ✅ HTTPS + WSS 실행 또는 일반 HTTP 실행
+    # ✅ HTTPS + WSS 모드
     if os.path.exists(cert_path) and os.path.exists(key_path):
         print("✅ HTTPS + WSS 모드로 실행됩니다.")
         socketio.run(app,
@@ -793,5 +804,5 @@ if __name__ == "__main__":
                      certfile=cert_path,
                      keyfile=key_path)
     else:
-        print("⚠️ 인증서가 없어 HTTP로 실행됩니다. 운영환경에서는 TLS 설정이 필요합니다.")
+        print("⚠️ 인증서가 없어 HTTP + WS 모드로 실행됩니다. 운영환경에서는 TLS 설정이 필요합니다.")
         socketio.run(app, host="0.0.0.0", port=5000, debug=True)
